@@ -251,7 +251,6 @@
             padding: 20px;
         }
 
-        /* 設定セクション用 */
         .settings-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -270,6 +269,48 @@
             padding: 15px;
             border-radius: 8px;
         }
+
+        .venue-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .venue-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .venue-info {
+            cursor: pointer;
+            flex-grow: 1;
+        }
+
+        .venue-name {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .venue-pref {
+            font-size: 0.8em;
+            color: #666;
+            margin-right: 10px;
+        }
+
+        .sort-controls {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .sort-controls select {
+            width: auto;
+            padding: 5px;
+        }
     </style>
 </head>
 
@@ -280,13 +321,14 @@
 
         <nav>
             <button onclick="showSection('liveListSection')">ライブ一覧</button>
-            <button onclick="showSection('artistListSection')">アーティスト</button>
             <button onclick="openLiveForm()">＋ ライブ登録</button>
+            <button onclick="renderArtistList(); showSection('artistListSection')">アーティスト</button>
+            <button onclick="renderVenueList(); showSection('venueListSection')">会場</button>
             <button onclick="showSection('settingsSection')" class="btn-dark">設定・バックアップ</button>
         </nav>
 
         <section id="liveListSection" class="view-section active">
-            <h2>参戦ライブ一覧</h2>
+            <h2>参加ライブ一覧</h2>
             <table id="liveTable">
                 <thead>
                     <tr>
@@ -300,44 +342,79 @@
             </table>
         </section>
 
-        <section id="settingsSection" class="view-section">
-            <h2>設定・バックアップ</h2>
-            <div class="settings-grid">
-                <div class="settings-card">
-                    <h3>エクスポート</h3>
-                    <p><small>データをファイルとして保存します。</small></p>
-                    <button onclick="exportJSON()" style="width:100%; margin-bottom:10px;">JSON形式で保存 (完全バックアップ)</button>
-                    <button onclick="exportCSV()" class="btn-secondary" style="width:100%;">CSV形式で保存 (Excel閲覧用)</button>
-                </div>
-                <div class="settings-card">
-                    <h3>インポート</h3>
-                    <p><small>保存したJSONファイルから復元します。<br><span style="color:red;">※現在のデータは上書きされます。</span></small></p>
-                    <input type="file" id="importFile" accept=".json"
-                        style="margin-bottom:10px; border:none; padding:0;">
-                    <button onclick="importJSON()" class="btn-edit" style="width:100%;">ファイルを読み込んで復元</button>
-                </div>
+        <section id="venueListSection" class="view-section">
+            <h2>会場一覧</h2>
+            <div id="venueContainer"></div>
+        </section>
+
+        <section id="venueDetailSection" class="view-section">
+            <h2 id="detVenueName"></h2>
+            <p id="detVenuePref" style="text-align: center; color: #666;"></p>
+            <div class="stats-container" id="venueStats"></div>
+            <h3>この会場での参加履歴</h3>
+            <table id="venueLiveTable">
+                <thead>
+                    <tr>
+                        <th>日付</th>
+                        <th>公演名</th>
+                        <th>アーティスト</th>
+                    </tr>
+                </thead>
+                <tbody id="venueLiveBody"></tbody>
+            </table>
+            <div class="actions">
+                <button class="btn-secondary" onclick="showSection('venueListSection')">戻る</button>
+                <button class="btn-edit" id="editVenueBtn">会場情報を編集</button>
             </div>
         </section>
 
-        <section id="liveDetailSection" class="view-section">
-            <h2 id="detLiveName"></h2>
-            <div id="liveDetailContent"></div>
-            <div class="actions">
-                <button class="btn-secondary" onclick="showSection('liveListSection')">戻る</button>
-                <button class="btn-edit" id="editLiveBtn">編集する</button>
-                <button class="btn-delete" id="deleteLiveBtn">削除する</button>
-            </div>
+        <section id="venueEditFormSection" class="view-section">
+            <h2>会場編集</h2>
+            <form id="venueEditForm">
+                <input type="hidden" id="oldVenueName">
+                <input type="hidden" id="oldVenuePref">
+                <div class="form-group">
+                    <label>会場名</label>
+                    <input type="text" id="editVenueName" required>
+                </div>
+                <div class="form-group">
+                    <label>都道府県</label>
+                    <select id="editVenuePrefSelect"></select>
+                </div>
+                <div class="actions">
+                    <button type="button" class="btn-secondary" onclick="showSection('venueListSection')">キャンセル</button>
+                    <button type="submit">更新する</button>
+                </div>
+            </form>
         </section>
 
         <section id="artistListSection" class="view-section">
             <h2>登録アーティスト</h2>
-            <div id="artistContainer"></div>
+            <div class="sort-controls">
+                <label><small>並び替え:</small></label>
+                <select id="artistSortSelect" onchange="renderArtistList()">
+                    <option value="regNew">登録順 (新しい順)</option>
+                    <option value="favorite">お気に入り順</option>
+                </select>
+            </div>
+            <table id="artistTable">
+                <thead>
+                    <tr>
+                        <th>アーティスト名</th>
+                        <th>合計</th>
+                        <th>ワンマン</th>
+                        <th>対バン</th>
+                        <th>フェス</th>
+                    </tr>
+                </thead>
+                <tbody id="artistTableBody"></tbody>
+            </table>
         </section>
 
         <section id="artistDetailSection" class="view-section">
             <h2 id="detArtistName"></h2>
             <div class="stats-container" id="artistStats"></div>
-            <h3>参戦履歴</h3>
+            <h3>参加履歴</h3>
             <table id="artistLiveTable">
                 <thead>
                     <tr>
@@ -352,6 +429,16 @@
                 <button class="btn-secondary" onclick="showSection('artistListSection')">戻る</button>
                 <button class="btn-edit" id="editArtistBtn">名前を編集</button>
                 <button class="btn-delete" id="deleteArtistBtn">アーティストを削除</button>
+            </div>
+        </section>
+
+        <section id="liveDetailSection" class="view-section">
+            <h2 id="detLiveName"></h2>
+            <div id="liveDetailContent"></div>
+            <div class="actions">
+                <button class="btn-secondary" onclick="showSection('liveListSection')">戻る</button>
+                <button class="btn-edit" id="editLiveBtn">編集する</button>
+                <button class="btn-delete" id="deleteLiveBtn">削除する</button>
             </div>
         </section>
 
@@ -418,6 +505,22 @@
                 </div>
             </form>
         </section>
+
+        <section id="settingsSection" class="view-section">
+            <h2>設定・バックアップ</h2>
+            <div class="settings-grid">
+                <div class="settings-card">
+                    <h3>エクスポート</h3>
+                    <button onclick="exportJSON()" style="width:100%; margin-bottom:10px;">JSON形式で保存</button>
+                    <button onclick="exportCSV()" class="btn-secondary" style="width:100%;">CSV形式で保存</button>
+                </div>
+                <div class="settings-card">
+                    <h3>インポート</h3>
+                    <input type="file" id="importFile" accept=".json" style="margin-bottom:10px;">
+                    <button onclick="importJSON()" class="btn-edit" style="width:100%;">復元する</button>
+                </div>
+            </div>
+        </section>
     </div>
 
     <script>
@@ -428,10 +531,12 @@
 
         function init() {
             const prefSelect = document.getElementById('prefecture');
+            const editPrefSelect = document.getElementById('editVenuePrefSelect');
             prefectures.forEach(p => {
                 let opt = document.createElement('option');
                 opt.value = p; opt.textContent = p;
                 prefSelect.appendChild(opt);
+                editPrefSelect.appendChild(opt.cloneNode(true));
             });
             initDateSelects();
             renderLiveList();
@@ -443,72 +548,231 @@
             document.getElementById(sectionId).classList.add('active');
         }
 
-        // --- バックアップ・復元機能 ---
-
-        // JSONエクスポート
-        function exportJSON() {
-            const data = { lives, artists, version: "1.0", exportDate: new Date().toLocaleString() };
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            downloadFile(blob, `live_archive_backup_${getTimestamp()}.json`);
+        // --- アーティスト集計・ソートロジック ---
+        function getArtistStats(artistId) {
+            // 型不一致を防ぐため String() で比較
+            const history = lives.filter(l => l.artistIds.some(id => String(id) === String(artistId)));
+            return {
+                total: history.length,
+                oneman: history.filter(l => l.type === 'ワンマン').length,
+                taiban: history.filter(l => l.type === '対バン').length,
+                fes: history.filter(l => l.type === 'フェス').length
+            };
         }
 
-        // CSVエクスポート
-        function exportCSV() {
-            let csvContent = "\uFEFF日付,公演名,形式,都道府県,会場,アーティスト\n";
-            lives.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(l => {
-                const artistNames = l.artistIds.map(id => artists.find(a => a.id === id)?.name || '<削除済>').join(' / ');
-                const row = [l.date, l.name, l.type, l.pref, l.venue, artistNames].map(v => `"${v}"`).join(',');
-                csvContent += row + "\n";
+        function calculateFavoriteScore(artistId) {
+            const relevantLives = lives.filter(l => l.artistIds.some(id => String(id) === String(artistId)));
+            let score = 0;
+            relevantLives.forEach(l => {
+                if (l.type === 'ワンマン') score += 5;
+                else if (l.type === '対バン') score += 3;
+                else if (l.type === 'フェス') score += 2;
             });
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            downloadFile(blob, `live_list_${getTimestamp()}.csv`);
+            return score;
         }
 
-        // ダウンロード実行
-        function downloadFile(blob, fileName) {
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = fileName;
-            link.click();
-            URL.revokeObjectURL(link.href);
+        function renderArtistList() {
+            const body = document.getElementById('artistTableBody');
+            body.innerHTML = '';
+            const sortType = document.getElementById('artistSortSelect').value;
+
+            let sortedArtists = [...artists];
+            if (sortType === 'regNew') {
+                // IDは文字列だが、Date.now()ベースなので数値として比較
+                sortedArtists.sort((a, b) => Number(b.id) - Number(a.id));
+            } else if (sortType === 'favorite') {
+                sortedArtists.sort((a, b) => calculateFavoriteScore(b.id) - calculateFavoriteScore(a.id));
+            }
+
+            if (sortedArtists.length === 0) {
+                body.innerHTML = '<tr><td colspan="5" class="empty-state">アーティストが登録されていません</td></tr>';
+                return;
+            }
+
+            sortedArtists.forEach(a => {
+                const stats = getArtistStats(a.id);
+                const tr = document.createElement('tr');
+                tr.onclick = () => showArtistDetail(a.id);
+                tr.innerHTML = `
+                <td><strong style="color:var(--primary-color)">${a.name}</strong></td>
+                <td>${stats.total}</td>
+                <td>${stats.oneman}</td>
+                <td>${stats.taiban}</td>
+                <td>${stats.fes}</td>
+            `;
+                body.appendChild(tr);
+            });
         }
 
-        // JSONインポート
-        function importJSON() {
-            const fileInput = document.getElementById('importFile');
-            const file = fileInput.files[0];
-            if (!file) return alert("ファイルを選択してください。");
+        // --- 会場処理 ---
+        function getUniqueVenues() {
+            const venueMap = new Map();
+            lives.forEach(l => {
+                const key = `${l.pref}|${l.venue}`;
+                if (!venueMap.has(key)) venueMap.set(key, { name: l.venue, pref: l.pref, count: 0 });
+                venueMap.get(key).count++;
+            });
+            return Array.from(venueMap.values()).sort((a, b) => a.pref.localeCompare(b.pref, 'ja') || a.name.localeCompare(b.name, 'ja'));
+        }
 
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    if (!data.lives || !data.artists) throw new Error("不正な形式です。");
+        function renderVenueList() {
+            const container = document.getElementById('venueContainer');
+            container.innerHTML = '';
+            const venues = getUniqueVenues();
+            if (venues.length === 0) {
+                container.innerHTML = '<p class="empty-state">会場データがありません</p>';
+                return;
+            }
+            const ul = document.createElement('ul');
+            ul.className = 'venue-list';
+            venues.forEach(v => {
+                const li = document.createElement('li');
+                li.className = 'venue-item';
+                li.innerHTML = `
+                <div class="venue-info" onclick="showVenueDetail('${v.pref}', '${v.name}')">
+                    <span class="venue-pref">${v.pref}</span>
+                    <span class="venue-name">${v.name}</span>
+                </div>
+                <span class="stat-card btn-small">${v.count}回</span>
+            `;
+                ul.appendChild(li);
+            });
+            container.appendChild(ul);
+        }
 
-                    if (confirm("データを復元しますか？現在のデータはすべて上書きされます。")) {
-                        lives = data.lives;
-                        artists = data.artists;
-                        saveData();
-                        location.reload(); // 確実に反映させるためリロード
-                    }
-                } catch (err) {
-                    alert("ファイルの読み込みに失敗しました。正しいJSONファイルを選択してください。");
+        function showVenueDetail(pref, name) {
+            document.getElementById('detVenueName').textContent = name;
+            document.getElementById('detVenuePref').textContent = pref;
+            const history = lives.filter(l => l.venue === name && l.pref === pref).sort((a, b) => new Date(b.date) - new Date(a.date));
+            document.getElementById('venueStats').innerHTML = `<div class="stat-card"><span class="num">${history.length}</span><span class="label">Total Lives</span></div>`;
+            const body = document.getElementById('venueLiveBody');
+            body.innerHTML = '';
+            history.forEach(l => {
+                const tr = document.createElement('tr');
+                tr.onclick = () => showLiveDetail(l.id);
+                // 型に依存しないアーティスト名取得
+                const artistNames = l.artistIds.map(id => artists.find(a => String(a.id) === String(id))?.name || '<削除済>').join(', ');
+                tr.innerHTML = `<td>${l.date}</td><td>${l.name}</td><td>${artistNames}</td>`;
+                body.appendChild(tr);
+            });
+            document.getElementById('editVenueBtn').onclick = () => {
+                document.getElementById('oldVenueName').value = name;
+                document.getElementById('oldVenuePref').value = pref;
+                document.getElementById('editVenueName').value = name;
+                document.getElementById('editVenuePrefSelect').value = pref;
+                showSection('venueEditFormSection');
+            };
+            showSection('venueDetailSection');
+        }
+
+        document.getElementById('venueEditForm').onsubmit = function (e) {
+            e.preventDefault();
+            const oldName = document.getElementById('oldVenueName').value;
+            const oldPref = document.getElementById('oldVenuePref').value;
+            const newName = document.getElementById('editVenueName').value;
+            const newPref = document.getElementById('editVenuePrefSelect').value;
+            if (confirm(`会場情報を変更しますか？\n「${oldPref} ${oldName}」→「${newPref} ${newName}」`)) {
+                lives.forEach(l => { if (l.venue === oldName && l.pref === oldPref) { l.venue = newName; l.pref = newPref; } });
+                saveData();
+                renderVenueList();
+                showVenueDetail(newPref, newName);
+            }
+        };
+
+        // --- 基本機能 ---
+        function renderLiveList() {
+            const body = document.getElementById('liveTableBody');
+            body.innerHTML = '';
+            const todayStr = new Date().toISOString().split('T')[0];
+            lives.sort((a, b) => new Date(b.date) - new Date(a.date));
+            if (lives.length === 0) {
+                body.innerHTML = '<tr><td colspan="4" class="empty-state">登録されたライブはありません</td></tr>';
+                return;
+            }
+            lives.forEach(l => {
+                const tr = document.createElement('tr');
+                tr.onclick = () => showLiveDetail(l.id);
+                if (l.date < todayStr) tr.className = 'status-past';
+                else if (l.date === todayStr) tr.className = 'status-today';
+                else tr.className = 'status-future';
+
+                // 重要：比較時に型を文字列に統一
+                const artistNames = l.artistIds.map(id => artists.find(a => String(a.id) === String(id))?.name || '<削除済>').join(', ');
+
+                tr.innerHTML = `<td>${l.date}</td><td><strong>${l.name}</strong><br><small>（${l.type}）</small></td><td>${artistNames}</td><td>${l.pref} ${l.venue}</td>`;
+                body.appendChild(tr);
+            });
+        }
+
+        function showArtistDetail(artistId) {
+            const artist = artists.find(a => String(a.id) === String(artistId));
+            if (!artist) return;
+            document.getElementById('detArtistName').textContent = artist.name;
+            const history = lives.filter(l => l.artistIds.some(id => String(id) === String(artistId))).sort((a, b) => new Date(b.date) - new Date(a.date));
+            const stats = getArtistStats(artistId);
+            document.getElementById('artistStats').innerHTML = `
+            <div class="stat-card"><span class="num">${stats.total}</span><span class="label">Total</span></div>
+            <div class="stat-card"><span class="num">${stats.oneman}</span><span class="label">ワンマン</span></div>
+            <div class="stat-card"><span class="num">${stats.taiban}</span><span class="label">対バン</span></div>
+            <div class="stat-card"><span class="num">${stats.fes}</span><span class="label">フェス</span></div>
+        `;
+            const body = document.getElementById('artistLiveBody');
+            body.innerHTML = history.length ? '' : '<tr><td colspan="3" class="empty-state">まだ参加履歴がありません</td></tr>';
+            history.forEach(l => {
+                const tr = document.createElement('tr');
+                tr.onclick = () => showLiveDetail(l.id);
+                tr.innerHTML = `<td>${l.date}</td><td>${l.name}</td><td>${l.venue}</td>`;
+                body.appendChild(tr);
+            });
+            document.getElementById('editArtistBtn').onclick = () => {
+                document.getElementById('editArtistId').value = artistId;
+                document.getElementById('editArtistName').value = artist.name;
+                showSection('artistEditFormSection');
+            };
+            document.getElementById('deleteArtistBtn').onclick = () => {
+                if (confirm(`「${artist.name}」を削除しますか？`)) {
+                    artists = artists.filter(a => String(a.id) !== String(artistId));
+                    lives.forEach(l => { l.artistIds = l.artistIds.filter(id => String(id) !== String(artistId)); });
+                    saveData();
+                    renderArtistList();
+                    showSection('artistListSection');
                 }
             };
-            reader.readAsText(file);
+            showSection('artistDetailSection');
         }
 
-        function getTimestamp() {
-            const now = new Date();
-            return now.getFullYear() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
+        function showLiveDetail(liveId) {
+            const live = lives.find(l => l.id === liveId);
+            if (!live) return;
+            document.getElementById('detLiveName').textContent = live.name;
+            const artistLinks = live.artistIds.map(id => {
+                const a = artists.find(art => String(art.id) === String(id));
+                return a ? `<span class="artist-tag" onclick="event.stopPropagation(); showArtistDetail('${id}')">${a.name}</span>` : `<span class="artist-tag" style="color:#888;">(削除済)</span>`;
+            }).join('');
+            document.getElementById('liveDetailContent').innerHTML = `
+            <p><strong>日付:</strong> ${live.date}</p>
+            <p><strong>会場:</strong> <span style="color:var(--primary-color); cursor:pointer; text-decoration:underline;" onclick="showVenueDetail('${live.pref}', '${live.venue}')">${live.pref} ${live.venue}</span></p>
+            <p><strong>形式:</strong> ${live.type}</p>
+            <p style="margin-top:15px;"><strong>出演アーティスト:</strong><br>${artistLinks || '未設定'}</p>
+        `;
+            document.getElementById('editLiveBtn').onclick = () => openLiveForm(liveId);
+            document.getElementById('deleteLiveBtn').onclick = () => {
+                if (confirm('削除しますか？')) {
+                    lives = lives.filter(l => l.id !== liveId);
+                    saveData();
+                    renderLiveList();
+                    showSection('liveListSection');
+                }
+            };
+            showSection('liveDetailSection');
         }
 
-        // --- 日付プルダウン ---
+        // --- 補助関数 ---
         function initDateSelects() {
             const yearSel = document.getElementById('yearSelect');
             const monthSel = document.getElementById('monthSelect');
             const currentYear = new Date().getFullYear();
-            for (let y = currentYear - 4; y <= currentYear + 2; y++) {
+            for (let y = currentYear - 10; y <= currentYear + 2; y++) {
                 let opt = document.createElement('option');
                 opt.value = y; opt.textContent = y + '年';
                 if (y === currentYear) opt.selected = true;
@@ -522,7 +786,6 @@
             }
             updateDays();
         }
-
         function updateDays() {
             const year = parseInt(document.getElementById('yearSelect').value);
             const month = parseInt(document.getElementById('monthSelect').value);
@@ -537,14 +800,9 @@
                 daySel.appendChild(opt);
             }
         }
-
         function getFormattedDate() {
-            const y = document.getElementById('yearSelect').value;
-            const m = document.getElementById('monthSelect').value.padStart(2, '0');
-            const d = document.getElementById('daySelect').value.padStart(2, '0');
-            return `${y}-${m}-${d}`;
+            return `${document.getElementById('yearSelect').value}-${document.getElementById('monthSelect').value.padStart(2, '0')}-${document.getElementById('daySelect').value.padStart(2, '0')}`;
         }
-
         function setDateSelects(dateStr) {
             const [y, m, d] = dateStr.split('-').map(Number);
             document.getElementById('yearSelect').value = y;
@@ -552,25 +810,19 @@
             updateDays();
             document.getElementById('daySelect').value = d;
         }
-
-        // --- 会場サジェスト ---
         function updateVenueSuggestions() {
             const selectedPref = document.getElementById('prefecture').value;
             const datalist = document.getElementById('venueSuggestions');
             datalist.innerHTML = '';
-            const venues = [...new Set(lives.filter(l => l.pref === selectedPref).map(l => l.venue))];
-            venues.forEach(v => {
-                const opt = document.createElement('option');
-                opt.value = v;
-                datalist.appendChild(opt);
+            [...new Set(lives.filter(l => l.pref === selectedPref).map(l => l.venue))].forEach(v => {
+                const opt = document.createElement('option'); opt.value = v; datalist.appendChild(opt);
             });
         }
-
-        // --- アーティスト処理 ---
         function quickAddArtist() {
             const input = document.getElementById('quickArtistName');
             const name = input.value.trim();
             if (!name) return;
+            // 修正点：IDを文字列として保存
             const newArtist = { id: Date.now().toString(), name };
             artists.push(newArtist);
             saveData();
@@ -578,113 +830,19 @@
             const checkedIds = Array.from(document.querySelectorAll('#artistCheckboxes input:checked')).map(cb => cb.value);
             checkedIds.push(newArtist.id);
             renderArtistCheckboxes(checkedIds);
-            handleLiveTypeChange();
         }
-
         function renderArtistCheckboxes(selectedIds = []) {
             const container = document.getElementById('artistCheckboxes');
             container.innerHTML = '';
             artists.sort((a, b) => a.name.localeCompare(b.name, 'ja')).forEach(a => {
                 const div = document.createElement('div');
                 div.className = 'checkbox-item';
-                const cb = document.createElement('input');
-                cb.type = 'checkbox';
-                cb.id = `cb-${a.id}`;
-                cb.value = a.id;
-                cb.checked = selectedIds.includes(a.id);
-                cb.onchange = () => {
-                    if (document.getElementById('liveType').value === 'ワンマン' && cb.checked) {
-                        document.querySelectorAll('#artistCheckboxes input[type="checkbox"]').forEach(other => {
-                            if (other !== cb) other.checked = false;
-                        });
-                    }
-                };
-                const label = document.createElement('label');
-                label.htmlFor = `cb-${a.id}`;
-                label.textContent = a.name;
-                div.appendChild(cb);
-                div.appendChild(label);
+                // IDをString化して比較
+                const isChecked = selectedIds.some(sid => String(sid) === String(a.id));
+                div.innerHTML = `<input type="checkbox" id="cb-${a.id}" value="${a.id}" ${isChecked ? 'checked' : ''}><label for="cb-${a.id}">${a.name}</label>`;
                 container.appendChild(div);
             });
         }
-
-        function renderArtistList() {
-            const container = document.getElementById('artistContainer');
-            container.innerHTML = '';
-            if (artists.length === 0) {
-                container.innerHTML = '<p class="empty-state">アーティストが登録されていません</p>';
-                return;
-            }
-            const ul = document.createElement('ul');
-            artists.sort((a, b) => a.name.localeCompare(b.name, 'ja')).forEach(a => {
-                const li = document.createElement('li');
-                li.style.marginBottom = "10px";
-                li.innerHTML = `<a href="#" onclick="showArtistDetail('${a.id}')" style="font-size:1.2em; color:var(--primary-color);">${a.name}</a>`;
-                ul.appendChild(li);
-            });
-            container.appendChild(ul);
-        }
-
-        function showArtistDetail(artistId) {
-            const artist = artists.find(a => a.id === artistId);
-            if (!artist) return;
-            document.getElementById('detArtistName').textContent = artist.name;
-            const history = lives.filter(l => l.artistIds.includes(artistId)).sort((a, b) => new Date(a.date) - new Date(b.date));
-            const stats = { "ワンマン": 0, "フェス": 0, "対バン": 0, "合計": history.length };
-            history.forEach(l => { if (stats[l.type] !== undefined) stats[l.type]++; });
-            document.getElementById('artistStats').innerHTML = `
-            <div class="stat-card"><span class="num">${stats['合計']}</span><span class="label">Total</span></div>
-            <div class="stat-card"><span class="num">${stats['ワンマン']}</span><span class="label">ワンマン</span></div>
-            <div class="stat-card"><span class="num">${stats['フェス']}</span><span class="label">フェス</span></div>
-            <div class="stat-card"><span class="num">${stats['対バン']}</span><span class="label">対バン</span></div>
-        `;
-            const body = document.getElementById('artistLiveBody');
-            body.innerHTML = history.length ? '' : '<tr><td colspan="3" class="empty-state">まだ参戦履歴がありません</td></tr>';
-            history.forEach(l => {
-                const tr = document.createElement('tr');
-                tr.onclick = () => showLiveDetail(l.id);
-                tr.innerHTML = `<td>${l.date}</td><td>${l.name}</td><td>${l.venue}</td>`;
-                body.appendChild(tr);
-            });
-            document.getElementById('editArtistBtn').onclick = () => {
-                document.getElementById('editArtistId').value = artistId;
-                document.getElementById('editArtistName').value = artist.name;
-                showSection('artistEditFormSection');
-            };
-            document.getElementById('deleteArtistBtn').onclick = () => {
-                if (confirm(`「${artist.name}」を削除しますか？`)) {
-                    artists = artists.filter(a => a.id !== artistId);
-                    lives.forEach(l => { l.artistIds = l.artistIds.filter(id => id !== artistId); });
-                    saveData();
-                    renderArtistList();
-                    showSection('artistListSection');
-                }
-            };
-            showSection('artistDetailSection');
-        }
-
-        document.getElementById('artistEditForm').onsubmit = function (e) {
-            e.preventDefault();
-            const id = document.getElementById('editArtistId').value;
-            const name = document.getElementById('editArtistName').value;
-            const idx = artists.findIndex(a => a.id === id);
-            artists[idx].name = name;
-            saveData();
-            renderArtistList();
-            showArtistDetail(id);
-        };
-
-        // --- ライブ処理 ---
-        function handleLiveTypeChange() {
-            const type = document.getElementById('liveType').value;
-            if (type === 'ワンマン') {
-                const checked = document.querySelectorAll('#artistCheckboxes input:checked');
-                if (checked.length > 1) {
-                    checked.forEach((cb, i) => { if (i > 0) cb.checked = false; });
-                }
-            }
-        }
-
         function openLiveForm(id = null) {
             const form = document.getElementById('liveForm');
             form.reset();
@@ -702,18 +860,15 @@
             } else {
                 document.getElementById('editLiveId').value = "";
                 document.getElementById('liveFormTitle').textContent = "ライブ登録";
-                const today = new Date().toISOString().split('T')[0];
-                setDateSelects(today);
+                setDateSelects(new Date().toISOString().split('T')[0]);
             }
             updateVenueSuggestions();
             renderArtistCheckboxes(selectedArtistIds);
             showSection('liveFormSection');
         }
-
         document.getElementById('liveForm').onsubmit = function (e) {
             e.preventDefault();
             const artistIds = Array.from(document.querySelectorAll('#artistCheckboxes input:checked')).map(cb => cb.value);
-            if (artistIds.length === 0 && !confirm("アーティストが未選択です。保存しますか？")) return;
             const id = document.getElementById('editLiveId').value;
             const liveData = {
                 id: id || Date.now().toString(),
@@ -724,69 +879,45 @@
                 artistIds: artistIds,
                 type: document.getElementById('liveType').value
             };
-            if (id) {
-                const idx = lives.findIndex(l => l.id === id);
-                lives[idx] = liveData;
-            } else {
-                lives.push(liveData);
-            }
+            if (id) { const idx = lives.findIndex(l => l.id === id); lives[idx] = liveData; }
+            else { lives.push(liveData); }
             saveData();
             renderLiveList();
             showSection('liveListSection');
         };
-
-        function renderLiveList() {
-            const body = document.getElementById('liveTableBody');
-            body.innerHTML = '';
-            const todayStr = new Date().toISOString().split('T')[0];
-            lives.sort((a, b) => new Date(a.date) - new Date(b.date));
-            if (lives.length === 0) {
-                body.innerHTML = '<tr><td colspan="4" class="empty-state">登録されたライブはありません</td></tr>';
-                return;
-            }
-            lives.forEach(l => {
-                const tr = document.createElement('tr');
-                tr.onclick = () => showLiveDetail(l.id);
-                if (l.date < todayStr) tr.className = 'status-past';
-                else if (l.date === todayStr) tr.className = 'status-today';
-                else tr.className = 'status-future';
-                const artistNames = l.artistIds.map(id => artists.find(a => a.id === id)?.name || '<削除済>').join(', ');
-                tr.innerHTML = `<td>${l.date}</td><td><strong>${l.name}</strong><br><small>（${l.type}）</small></td><td>${artistNames}</td><td>${l.pref} ${l.venue}</td>`;
-                body.appendChild(tr);
-            });
-        }
-
-        function showLiveDetail(liveId) {
-            const live = lives.find(l => l.id === liveId);
-            if (!live) return;
-            document.getElementById('detLiveName').textContent = live.name;
-            const artistLinks = live.artistIds.map(id => {
-                const a = artists.find(art => art.id === id);
-                return a ? `<span class="artist-tag" onclick="event.stopPropagation(); showArtistDetail('${id}')">${a.name}</span>` : `<span class="artist-tag" style="color:#888;">(削除済)</span>`;
-            }).join('');
-            document.getElementById('liveDetailContent').innerHTML = `
-            <p><strong>日付:</strong> ${live.date}</p>
-            <p><strong>会場:</strong> ${live.pref} ${live.venue}</p>
-            <p><strong>公演形式:</strong> ${live.type}</p>
-            <p style="margin-top:15px;"><strong>出演アーティスト:</strong><br>${artistLinks || '未設定'}</p>
-        `;
-            document.getElementById('editLiveBtn').onclick = () => openLiveForm(liveId);
-            document.getElementById('deleteLiveBtn').onclick = () => {
-                if (confirm('削除しますか？')) {
-                    lives = lives.filter(l => l.id !== liveId);
-                    saveData();
-                    renderLiveList();
-                    showSection('liveListSection');
-                }
-            };
-            showSection('liveDetailSection');
-        }
-
+        document.getElementById('artistEditForm').onsubmit = function (e) {
+            e.preventDefault();
+            const id = document.getElementById('editArtistId').value;
+            const name = document.getElementById('editArtistName').value;
+            const idx = artists.findIndex(a => String(a.id) === String(id));
+            artists[idx].name = name;
+            saveData();
+            renderArtistList();
+            showArtistDetail(id);
+        };
         function saveData() {
             localStorage.setItem('lives', JSON.stringify(lives));
             localStorage.setItem('artists', JSON.stringify(artists));
         }
-
+        function exportJSON() {
+            const data = { lives, artists };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `live_archive_backup.json`;
+            link.click();
+        }
+        function importJSON() {
+            const file = document.getElementById('importFile').files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const data = JSON.parse(e.target.result);
+                lives = data.lives; artists = data.artists;
+                saveData(); location.reload();
+            };
+            reader.readAsText(file);
+        }
         init();
     </script>
 
