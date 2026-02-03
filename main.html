@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Archive</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --primary-color: #3498db;
+            --past-color: #e0e0e0;
+            --today-color: #fff9c4;
+            --future-color: #e8f5e9;
+            --text-color: #333;
+            --accent-color: #e67e22;
+            --danger-color: #e74c3c;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1,
+        h2,
+        h3 {
+            text-align: center;
+        }
+
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 18px;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: bold;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+
+        .btn-secondary {
+            background-color: #7f8c8d;
+        }
+
+        .btn-edit {
+            background-color: var(--accent-color);
+        }
+
+        .btn-delete {
+            background-color: var(--danger-color);
+        }
+
+        .view-section {
+            display: none;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        tbody tr {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        tbody tr:hover {
+            filter: brightness(0.95);
+        }
+
+        .status-past {
+            background-color: var(--past-color);
+        }
+
+        .status-today {
+            background-color: var(--today-color);
+            border-left: 6px solid #f1c40f;
+        }
+
+        .status-future {
+            background-color: var(--future-color);
+            border-left: 6px solid #2ecc71;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        /* アーティスト選択（チェックボックスエリア） */
+        .checkbox-group {
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 150px;
+            overflow-y: auto;
+            background: #fff;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+            cursor: pointer;
+        }
+
+        .checkbox-item input {
+            width: auto;
+            cursor: pointer;
+        }
+
+        .artist-tag {
+            display: inline-block;
+            background: #eee;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-right: 8px;
+            font-size: 0.9em;
+            color: var(--primary-color);
+            text-decoration: underline;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .actions {
+            margin-top: 25px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        /* 統計カード */
+        .stats-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            background: #f9f9f9;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .stat-card .num {
+            display: block;
+            font-size: 1.4em;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .stat-card .label {
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #888;
+            padding: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Live Archive</h1>
+
+        <nav>
+            <button onclick="showSection('liveListSection')">ライブ一覧</button>
+            <button onclick="showSection('artistListSection')">アーティスト</button>
+            <button onclick="openLiveForm()">＋ ライブ登録</button>
+            <button onclick="openArtistForm()">＋ アーティスト登録</button>
+        </nav>
+
+        <section id="liveListSection" class="view-section active">
+            <h2>参戦ライブ一覧</h2>
+            <table id="liveTable">
+                <thead>
+                    <tr>
+                        <th>日付</th>
+                        <th>公演名</th>
+                        <th>アーティスト</th>
+                        <th>場所</th>
+                    </tr>
+                </thead>
+                <tbody id="liveTableBody"></tbody>
+            </table>
+        </section>
+
+        <section id="liveDetailSection" class="view-section">
+            <h2 id="detLiveName"></h2>
+            <div id="liveDetailContent"></div>
+            <div class="actions">
+                <button class="btn-secondary" onclick="showSection('liveListSection')">戻る</button>
+                <button class="btn-edit" id="editLiveBtn">編集する</button>
+                <button class="btn-delete" id="deleteLiveBtn">削除する</button>
+            </div>
+        </section>
+
+        <section id="artistListSection" class="view-section">
+            <h2>登録アーティスト</h2>
+            <div id="artistContainer"></div>
+        </section>
+
+        <section id="artistDetailSection" class="view-section">
+            <h2 id="detArtistName"></h2>
+
+            <div class="stats-container" id="artistStats">
+            </div>
+
+            <h3>参戦履歴</h3>
+            <table id="artistLiveTable">
+                <thead>
+                    <tr>
+                        <th>日付</th>
+                        <th>公演名</th>
+                        <th>会場</th>
+                    </tr>
+                </thead>
+                <tbody id="artistLiveBody"></tbody>
+            </table>
+            <div class="actions">
+                <button class="btn-secondary" onclick="showSection('artistListSection')">戻る</button>
+                <button class="btn-edit" id="editArtistBtn">名前を編集</button>
+                <button class="btn-delete" id="deleteArtistBtn">アーティストを削除</button>
+            </div>
+        </section>
+
+        <section id="liveFormSection" class="view-section">
+            <h2 id="liveFormTitle">ライブ登録</h2>
+            <form id="liveForm">
+                <input type="hidden" id="editLiveId">
+                <div class="form-group">
+                    <label>公演名</label>
+                    <input type="text" id="liveName" required>
+                </div>
+                <div class="form-group">
+                    <label>日付</label>
+                    <input type="date" id="liveDate" required>
+                </div>
+                <div class="form-group">
+                    <label>都道府県</label>
+                    <select id="prefecture" onchange="updateVenueSuggestions()"></select>
+                </div>
+                <div class="form-group">
+                    <label>会場名</label>
+                    <input type="text" id="venueName" list="venueSuggestions" placeholder="直接入力または過去の会場から選択" required>
+                    <datalist id="venueSuggestions"></datalist>
+                </div>
+                <div class="form-group">
+                    <label>形式</label>
+                    <select id="liveType" onchange="handleLiveTypeChange()">
+                        <option value="ワンマン">ワンマン</option>
+                        <option value="フェス">フェス</option>
+                        <option value="対バン">対バン</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>アーティスト選択</label>
+                    <div id="artistCheckboxes" class="checkbox-group">
+                    </div>
+                </div>
+                <div class="actions">
+                    <button type="button" class="btn-secondary" onclick="showSection('liveListSection')">キャンセル</button>
+                    <button type="submit">保存する</button>
+                </div>
+            </form>
+        </section>
+
+        <section id="artistFormSection" class="view-section">
+            <h2 id="artistFormTitle">アーティスト登録</h2>
+            <form id="artistForm">
+                <input type="hidden" id="editArtistId">
+                <div class="form-group">
+                    <label>アーティスト名</label>
+                    <input type="text" id="newArtistName" required>
+                </div>
+                <div class="actions">
+                    <button type="button" class="btn-secondary"
+                        onclick="showSection('artistListSection')">キャンセル</button>
+                    <button type="submit">保存する</button>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <script>
+        let lives = JSON.parse(localStorage.getItem('lives')) || [];
+        let artists = JSON.parse(localStorage.getItem('artists')) || [];
+
+        const prefectures = ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"];
+
+        function init() {
+            const prefSelect = document.getElementById('prefecture');
+            prefectures.forEach(p => {
+                let opt = document.createElement('option');
+                opt.value = p; opt.textContent = p;
+                prefSelect.appendChild(opt);
+            });
+            renderLiveList();
+            renderArtistList();
+        }
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+        }
+
+        // --- 会場サジェスト機能 ---
+        function updateVenueSuggestions() {
+            const selectedPref = document.getElementById('prefecture').value;
+            const datalist = document.getElementById('venueSuggestions');
+            datalist.innerHTML = '';
+
+            // 選択された都道府県に紐づく既存の会場を抽出
+            const venues = [...new Set(lives.filter(l => l.pref === selectedPref).map(l => l.venue))];
+
+            venues.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v;
+                datalist.appendChild(opt);
+            });
+        }
+
+        // --- アーティスト処理 ---
+        function openArtistForm(id = null) {
+            const form = document.getElementById('artistForm');
+            form.reset();
+            if (id) {
+                const artist = artists.find(a => a.id === id);
+                document.getElementById('editArtistId').value = id;
+                document.getElementById('newArtistName').value = artist.name;
+                document.getElementById('artistFormTitle').textContent = "アーティスト編集";
+            } else {
+                document.getElementById('editArtistId').value = "";
+                document.getElementById('artistFormTitle').textContent = "アーティスト登録";
+            }
+            showSection('artistFormSection');
+        }
+
+        document.getElementById('artistForm').onsubmit = function (e) {
+            e.preventDefault();
+            const id = document.getElementById('editArtistId').value;
+            const name = document.getElementById('newArtistName').value;
+
+            if (id) {
+                const idx = artists.findIndex(a => a.id === id);
+                artists[idx].name = name;
+            } else {
+                artists.push({ id: Date.now().toString(), name });
+            }
+            saveData();
+            renderArtistList();
+            showSection('artistListSection');
+        };
+
+        function renderArtistList() {
+            const container = document.getElementById('artistContainer');
+            container.innerHTML = '';
+            if (artists.length === 0) {
+                container.innerHTML = '<p class="empty-state">アーティストが登録されていません</p>';
+                return;
+            }
+            const ul = document.createElement('ul');
+            artists.sort((a, b) => a.name.localeCompare(b.name, 'ja')).forEach(a => {
+                const li = document.createElement('li');
+                li.style.marginBottom = "10px";
+                li.innerHTML = `<a href="#" onclick="showArtistDetail('${a.id}')" style="font-size:1.2em; color:var(--primary-color);">${a.name}</a>`;
+                ul.appendChild(li);
+            });
+            container.appendChild(ul);
+        }
+
+        function showArtistDetail(artistId) {
+            const artist = artists.find(a => a.id === artistId);
+            if (!artist) return;
+            document.getElementById('detArtistName').textContent = artist.name;
+
+            const history = lives.filter(l => l.artistIds.includes(artistId))
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // 統計計算
+            const stats = { "ワンマン": 0, "フェス": 0, "対バン": 0, "合計": history.length };
+            history.forEach(l => { if (stats[l.type] !== undefined) stats[l.type]++; });
+
+            const statsHtml = `
+            <div class="stat-card"><span class="num">${stats['合計']}</span><span class="label">Total</span></div>
+            <div class="stat-card"><span class="num">${stats['ワンマン']}</span><span class="label">ワンマン</span></div>
+            <div class="stat-card"><span class="num">${stats['フェス']}</span><span class="label">フェス</span></div>
+            <div class="stat-card"><span class="num">${stats['対バン']}</span><span class="label">対バン</span></div>
+        `;
+            document.getElementById('artistStats').innerHTML = statsHtml;
+
+            const body = document.getElementById('artistLiveBody');
+            body.innerHTML = '';
+            if (history.length === 0) {
+                body.innerHTML = '<tr><td colspan="3" class="empty-state">まだ参戦履歴がありません</td></tr>';
+            } else {
+                history.forEach(l => {
+                    const tr = document.createElement('tr');
+                    tr.onclick = () => showLiveDetail(l.id);
+                    tr.innerHTML = `<td>${l.date}</td><td>${l.name}</td><td>${l.venue}</td>`;
+                    body.appendChild(tr);
+                });
+            }
+
+            document.getElementById('editArtistBtn').onclick = () => openArtistForm(artistId);
+            document.getElementById('deleteArtistBtn').onclick = () => {
+                if (confirm(`「${artist.name}」を削除しますか？\n（ライブ情報からこのアーティストの名前が消えます）`)) {
+                    artists = artists.filter(a => a.id !== artistId);
+                    lives.forEach(l => { l.artistIds = l.artistIds.filter(id => id !== artistId); });
+                    saveData();
+                    renderArtistList();
+                    showSection('artistListSection');
+                }
+            };
+            showSection('artistDetailSection');
+        }
+
+        // --- ライブ処理 ---
+        function handleLiveTypeChange() {
+            const type = document.getElementById('liveType').value;
+            const checkboxes = document.querySelectorAll('#artistCheckboxes input[type="checkbox"]');
+
+            if (type === 'ワンマン') {
+                // ワンマンに変更されたとき、既に複数チェックがあればリセット（最初の一つだけ残す）
+                let checkedCount = 0;
+                checkboxes.forEach(cb => {
+                    if (cb.checked) {
+                        checkedCount++;
+                        if (checkedCount > 1) cb.checked = false;
+                    }
+                });
+            }
+        }
+
+        function renderArtistCheckboxes(selectedIds = []) {
+            const container = document.getElementById('artistCheckboxes');
+            container.innerHTML = '';
+
+            if (artists.length === 0) {
+                container.innerHTML = '<p style="color:#888; font-size:0.9em;">先にアーティストを登録してください</p>';
+                return;
+            }
+
+            artists.sort((a, b) => a.name.localeCompare(b.name, 'ja')).forEach(a => {
+                const div = document.createElement('div');
+                div.className = 'checkbox-item';
+
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.id = `cb-${a.id}`;
+                cb.value = a.id;
+                cb.checked = selectedIds.includes(a.id);
+
+                cb.onchange = () => {
+                    const type = document.getElementById('liveType').value;
+                    if (type === 'ワンマン' && cb.checked) {
+                        // ワンマンの場合は他のチェックをすべて外す
+                        document.querySelectorAll('#artistCheckboxes input[type="checkbox"]').forEach(other => {
+                            if (other !== cb) other.checked = false;
+                        });
+                    }
+                };
+
+                const label = document.createElement('label');
+                label.htmlFor = `cb-${a.id}`;
+                label.textContent = a.name;
+
+                div.appendChild(cb);
+                div.appendChild(label);
+                container.appendChild(div);
+            });
+        }
+
+        function openLiveForm(id = null) {
+            const form = document.getElementById('liveForm');
+            form.reset();
+
+            let selectedArtistIds = [];
+
+            if (id) {
+                const live = lives.find(l => l.id === id);
+                document.getElementById('editLiveId').value = id;
+                document.getElementById('liveName').value = live.name;
+                document.getElementById('liveDate').value = live.date;
+                document.getElementById('prefecture').value = live.pref;
+                document.getElementById('venueName').value = live.venue;
+                document.getElementById('liveType').value = live.type;
+                selectedArtistIds = live.artistIds;
+                document.getElementById('liveFormTitle').textContent = "ライブ編集";
+            } else {
+                document.getElementById('editLiveId').value = "";
+                document.getElementById('liveFormTitle').textContent = "ライブ登録";
+                // デフォルトで最初の都道府県のサジェストを表示
+                document.getElementById('prefecture').selectedIndex = 0;
+            }
+
+            updateVenueSuggestions();
+            renderArtistCheckboxes(selectedArtistIds);
+            showSection('liveFormSection');
+        }
+
+        document.getElementById('liveForm').onsubmit = function (e) {
+            e.preventDefault();
+            const artistIds = Array.from(document.querySelectorAll('#artistCheckboxes input:checked')).map(cb => cb.value);
+
+            if (artistIds.length === 0) {
+                if (!confirm("アーティストが選択されていません。保存しますか？")) return;
+            }
+
+            const id = document.getElementById('editLiveId').value;
+            const liveData = {
+                id: id || Date.now().toString(),
+                name: document.getElementById('liveName').value,
+                date: document.getElementById('liveDate').value,
+                venue: document.getElementById('venueName').value,
+                pref: document.getElementById('prefecture').value,
+                artistIds: artistIds,
+                type: document.getElementById('liveType').value
+            };
+
+            if (id) {
+                const idx = lives.findIndex(l => l.id === id);
+                lives[idx] = liveData;
+            } else {
+                lives.push(liveData);
+            }
+
+            saveData();
+            renderLiveList();
+            showSection('liveListSection');
+        };
+
+        function renderLiveList() {
+            const body = document.getElementById('liveTableBody');
+            body.innerHTML = '';
+            const todayStr = new Date().toISOString().split('T')[0];
+            lives.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            if (lives.length === 0) {
+                body.innerHTML = '<tr><td colspan="4" class="empty-state">登録されたライブはありません</td></tr>';
+                return;
+            }
+
+            lives.forEach(l => {
+                const tr = document.createElement('tr');
+                tr.onclick = () => showLiveDetail(l.id);
+                if (l.date < todayStr) tr.className = 'status-past';
+                else if (l.date === todayStr) tr.className = 'status-today';
+                else tr.className = 'status-future';
+
+                const artistNames = l.artistIds.map(id => artists.find(a => a.id === id)?.name || '<削除済み>').join(', ');
+
+                tr.innerHTML = `
+                <td>${l.date}</td>
+                <td><strong>${l.name}</strong><br><small>（${l.type}）</small></td>
+                <td>${artistNames}</td>
+                <td>${l.pref} ${l.venue}</td>
+            `;
+                body.appendChild(tr);
+            });
+        }
+
+        function showLiveDetail(liveId) {
+            const live = lives.find(l => l.id === liveId);
+            if (!live) return;
+
+            document.getElementById('detLiveName').textContent = live.name;
+            const content = document.getElementById('liveDetailContent');
+
+            const artistLinks = live.artistIds.map(id => {
+                const a = artists.find(art => art.id === id);
+                if (!a) return `<span class="artist-tag" style="text-decoration:none; color:#888;">(削除済み)</span>`;
+                return `<span class="artist-tag" onclick="event.stopPropagation(); showArtistDetail('${id}')">${a.name}</span>`;
+            }).join('');
+
+            content.innerHTML = `
+            <p><strong>日付:</strong> ${live.date}</p>
+            <p><strong>会場:</strong> ${live.pref} ${live.venue}</p>
+            <p><strong>公演形式:</strong> ${live.type}</p>
+            <p style="margin-top:15px;"><strong>出演アーティスト:</strong><br>${artistLinks || '未設定'}</p>
+        `;
+
+            document.getElementById('editLiveBtn').onclick = () => openLiveForm(liveId);
+            document.getElementById('deleteLiveBtn').onclick = () => {
+                if (confirm('このライブ情報を削除しますか？')) {
+                    lives = lives.filter(l => l.id !== liveId);
+                    saveData();
+                    renderLiveList();
+                    showSection('liveListSection');
+                }
+            };
+
+            showSection('liveDetailSection');
+        }
+
+        function saveData() {
+            localStorage.setItem('lives', JSON.stringify(lives));
+            localStorage.setItem('artists', JSON.stringify(artists));
+        }
+
+        init();
+    </script>
+
+</body>
+
+</html>
