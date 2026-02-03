@@ -176,7 +176,7 @@
             border: 1px solid #ccc;
             padding: 10px;
             border-radius: 4px;
-            max-height: 150px;
+            max-height: 300px;
             overflow-y: auto;
             background: #fff;
         }
@@ -401,7 +401,7 @@
                 <thead>
                     <tr>
                         <th>アーティスト名</th>
-                        <th>合計</th>
+                        <th>参加(済/予定)</th>
                         <th>ワンマン</th>
                         <th>対バン</th>
                         <th>フェス</th>
@@ -550,10 +550,12 @@
 
         // --- アーティスト集計・ソートロジック ---
         function getArtistStats(artistId) {
-            // 型不一致を防ぐため String() で比較
+            const todayStr = new Date().toISOString().split('T')[0];
             const history = lives.filter(l => l.artistIds.some(id => String(id) === String(artistId)));
+
             return {
-                total: history.length,
+                past: history.filter(l => l.date < todayStr).length,
+                future: history.filter(l => l.date >= todayStr).length,
                 oneman: history.filter(l => l.type === 'ワンマン').length,
                 taiban: history.filter(l => l.type === '対バン').length,
                 fes: history.filter(l => l.type === 'フェス').length
@@ -561,14 +563,28 @@
         }
 
         function calculateFavoriteScore(artistId) {
-            const relevantLives = lives.filter(l => l.artistIds.some(id => String(id) === String(artistId)));
+            const now = new Date();
+            const oneYearAgo = new Date(); oneYearAgo.setFullYear(now.getFullYear() - 1);
+            const oneYearLater = new Date(); oneYearLater.setFullYear(now.getFullYear() + 1);
+            const startStr = oneYearAgo.toISOString().split('T')[0];
+            const endStr = oneYearLater.toISOString().split('T')[0];
+
+            const history = lives.filter(l => l.artistIds.some(id => String(id) === String(artistId)));
+
             let score = 0;
-            relevantLives.forEach(l => {
+            let countInRange = 0;
+
+            history.forEach(l => {
                 if (l.type === 'ワンマン') score += 5;
                 else if (l.type === '対バン') score += 3;
                 else if (l.type === 'フェス') score += 2;
+
+                if (l.date >= startStr && l.date <= endStr) {
+                    countInRange++;
+                }
             });
-            return score;
+
+            return score + countInRange;
         }
 
         function renderArtistList() {
@@ -578,7 +594,6 @@
 
             let sortedArtists = [...artists];
             if (sortType === 'regNew') {
-                // IDは文字列だが、Date.now()ベースなので数値として比較
                 sortedArtists.sort((a, b) => Number(b.id) - Number(a.id));
             } else if (sortType === 'favorite') {
                 sortedArtists.sort((a, b) => calculateFavoriteScore(b.id) - calculateFavoriteScore(a.id));
@@ -595,7 +610,7 @@
                 tr.onclick = () => showArtistDetail(a.id);
                 tr.innerHTML = `
                 <td><strong style="color:var(--primary-color)">${a.name}</strong></td>
-                <td>${stats.total}</td>
+                <td>${stats.past} / ${stats.future}</td>
                 <td>${stats.oneman}</td>
                 <td>${stats.taiban}</td>
                 <td>${stats.fes}</td>
@@ -650,7 +665,6 @@
             history.forEach(l => {
                 const tr = document.createElement('tr');
                 tr.onclick = () => showLiveDetail(l.id);
-                // 型に依存しないアーティスト名取得
                 const artistNames = l.artistIds.map(id => artists.find(a => String(a.id) === String(id))?.name || '<削除済>').join(', ');
                 tr.innerHTML = `<td>${l.date}</td><td>${l.name}</td><td>${artistNames}</td>`;
                 body.appendChild(tr);
@@ -696,7 +710,6 @@
                 else if (l.date === todayStr) tr.className = 'status-today';
                 else tr.className = 'status-future';
 
-                // 重要：比較時に型を文字列に統一
                 const artistNames = l.artistIds.map(id => artists.find(a => String(a.id) === String(id))?.name || '<削除済>').join(', ');
 
                 tr.innerHTML = `<td>${l.date}</td><td><strong>${l.name}</strong><br><small>（${l.type}）</small></td><td>${artistNames}</td><td>${l.pref} ${l.venue}</td>`;
@@ -710,20 +723,32 @@
             document.getElementById('detArtistName').textContent = artist.name;
             const history = lives.filter(l => l.artistIds.some(id => String(id) === String(artistId))).sort((a, b) => new Date(b.date) - new Date(a.date));
             const stats = getArtistStats(artistId);
+
+            // --- 今回の修正点：アーティスト詳細ページのライブ一覧も色付け ---
+            const todayStr = new Date().toISOString().split('T')[0];
+
             document.getElementById('artistStats').innerHTML = `
-            <div class="stat-card"><span class="num">${stats.total}</span><span class="label">Total</span></div>
+            <div class="stat-card"><span class="num">${stats.past} / ${stats.future}</span><span class="label">参加済 / 予定</span></div>
             <div class="stat-card"><span class="num">${stats.oneman}</span><span class="label">ワンマン</span></div>
             <div class="stat-card"><span class="num">${stats.taiban}</span><span class="label">対バン</span></div>
             <div class="stat-card"><span class="num">${stats.fes}</span><span class="label">フェス</span></div>
         `;
             const body = document.getElementById('artistLiveBody');
             body.innerHTML = history.length ? '' : '<tr><td colspan="3" class="empty-state">まだ参加履歴がありません</td></tr>';
+
             history.forEach(l => {
                 const tr = document.createElement('tr');
                 tr.onclick = () => showLiveDetail(l.id);
+
+                // 色付けクラスの適用
+                if (l.date < todayStr) tr.className = 'status-past';
+                else if (l.date === todayStr) tr.className = 'status-today';
+                else tr.className = 'status-future';
+
                 tr.innerHTML = `<td>${l.date}</td><td>${l.name}</td><td>${l.venue}</td>`;
                 body.appendChild(tr);
             });
+
             document.getElementById('editArtistBtn').onclick = () => {
                 document.getElementById('editArtistId').value = artistId;
                 document.getElementById('editArtistName').value = artist.name;
@@ -822,7 +847,6 @@
             const input = document.getElementById('quickArtistName');
             const name = input.value.trim();
             if (!name) return;
-            // 修正点：IDを文字列として保存
             const newArtist = { id: Date.now().toString(), name };
             artists.push(newArtist);
             saveData();
@@ -837,7 +861,6 @@
             artists.sort((a, b) => a.name.localeCompare(b.name, 'ja')).forEach(a => {
                 const div = document.createElement('div');
                 div.className = 'checkbox-item';
-                // IDをString化して比較
                 const isChecked = selectedIds.some(sid => String(sid) === String(a.id));
                 div.innerHTML = `<input type="checkbox" id="cb-${a.id}" value="${a.id}" ${isChecked ? 'checked' : ''}><label for="cb-${a.id}">${a.name}</label>`;
                 container.appendChild(div);
