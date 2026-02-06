@@ -246,6 +246,15 @@
             color: #666;
         }
 
+        /* 特定の色分け用 */
+        .card-past .num {
+            color: var(--primary-color);
+        }
+
+        .card-future .num {
+            color: var(--success-color);
+        }
+
         .empty-state {
             text-align: center;
             color: #888;
@@ -414,6 +423,14 @@
             gap: 15px;
             margin-top: 20px;
         }
+
+        .formula-hint {
+            text-align: right;
+            font-size: 0.75em;
+            color: #888;
+            margin-top: 10px;
+            display: none;
+        }
     </style>
 </head>
 
@@ -439,7 +456,8 @@
         </section>
 
         <section id="liveListSection" class="view-section active">
-            <h2 id="liveListTitle">参加ライブ一覧</h2>
+            <h2>参加ライブ一覧</h2>
+            <div class="stats-container" id="liveListStats"></div>
             <table id="liveTable">
                 <thead>
                     <tr>
@@ -563,6 +581,7 @@
                 </thead>
                 <tbody id="artistTableBody"></tbody>
             </table>
+            <div id="artistFormulaHint" class="formula-hint">※お気に入り係数 = 5*(ワンマン) + 3*(対バン) + 2*(フェス) + 前後1年のライブ数</div>
         </section>
 
         <section id="artistDetailSection" class="view-section">
@@ -672,7 +691,6 @@
             document.getElementById(sectionId).classList.add('active');
         }
 
-        // --- 都道府県のデフォルト（最多）を計算 ---
         function getDefaultPrefecture() {
             if (lives.length === 0) return "東京都";
             const counts = {};
@@ -680,7 +698,23 @@
             return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
         }
 
-        // --- 統計機能 ---
+        // --- タイ（同順位）対応のランキング表示用 ---
+        function renderTieRanking(elementId, dataArray, unit = "回") {
+            const div = document.getElementById(elementId);
+            if (!dataArray.length) { div.innerHTML = 'なし'; return; }
+
+            let html = '';
+            let currentRank = 1;
+            for (let i = 0; i < dataArray.length; i++) {
+                // 前の項目とスコアが違う場合のみ順位を更新（1, 2, 2, 4 の形式）
+                if (i > 0 && dataArray[i][1] < dataArray[i - 1][1]) {
+                    currentRank = i + 1;
+                }
+                html += `<div class="ranking-item"><span>${currentRank}. ${dataArray[i][0]}</span><span>${dataArray[i][1]}${unit}</span></div>`;
+            }
+            div.innerHTML = html;
+        }
+
         function initStatsView() {
             const yearSelect = document.getElementById('statsYearSelect');
             yearSelect.innerHTML = '';
@@ -706,28 +740,30 @@
                 chart.appendChild(col);
             }
 
-            const renderRank = (id, data) => {
-                document.getElementById(id).innerHTML = data.length ? data.map((r, i) => `<div class="ranking-item"><span>${i + 1}. ${r[0]}</span><span>${r[1]}回</span></div>`).join('') : 'なし';
-            };
             const getRank = (arr, fn) => { const c = {}; arr.forEach(x => { const k = fn(x); c[k] = (c[k] || 0) + 1; }); return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 5); };
-            renderRank('allTimePrefRanking', getRank(lives, l => l.pref));
-            renderRank('yearlyPrefRanking', getRank(yearlyLives, l => l.pref));
+            renderTieRanking('allTimePrefRanking', getRank(lives, l => l.pref), "回");
+            renderTieRanking('yearlyPrefRanking', getRank(yearlyLives, l => l.pref), "回");
 
             const rankMap = {};
             yearlyLives.forEach(l => { l.artistIds.forEach(id => { const s = l.type === 'ワンマン' ? 5 : l.type === '対バン' ? 3 : 2; rankMap[id] = (rankMap[id] || 0) + s; }); });
-            const fav = Object.entries(rankMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
-            document.getElementById('yearlyRanking').innerHTML = fav.map((r, i) => `<div class="ranking-item"><span><span class="rank-num">${i + 1}.</span> ${artists.find(a => String(a.id) === String(r[0]))?.name || '<削除済>'}</span><span>${r[1]} pt</span></div>`).join('') || 'なし';
+            const favData = Object.entries(rankMap).sort((a, b) => b[1] - a[1]).slice(0, 10).map(r => [artists.find(a => String(a.id) === String(r[0]))?.name || '<削除済>', r[1]]);
+            renderTieRanking('yearlyRanking', favData, " pt");
 
             document.getElementById('yearlyLiveBody').innerHTML = yearlyLives.map(l => `<tr class="${l.date < todayStr ? 'status-past' : (l.date === todayStr ? 'status-today' : 'status-future')}" onclick="showLiveDetail('${l.id}')"><td>${l.date}</td><td>${l.name}</td><td>${l.venue}</td></tr>`).join('') || '<tr><td colspan="3">なし</td></tr>';
         }
 
-        // --- レンダリング共通 ---
         function renderLiveList() {
             const body = document.getElementById('liveTableBody');
             lives.sort((a, b) => b.date.localeCompare(a.date));
             const pastCount = lives.filter(l => l.date < todayStr).length;
             const futureCount = lives.filter(l => l.date >= todayStr).length;
-            document.getElementById('liveListTitle').innerHTML = `参加ライブ一覧 <span style="font-size:0.6em; font-weight:normal; color:#666;">(${pastCount} / ${futureCount})</span>`;
+
+            // タイトル横の文字を消し、カード枠に表示
+            const statsDiv = document.getElementById('liveListStats');
+            statsDiv.innerHTML = `
+            <div class="stat-card card-past"><span class="num">${pastCount}</span><span class="label">参加済</span></div>
+            <div class="stat-card card-future"><span class="num">${futureCount}</span><span class="label">参加予定</span></div>
+        `;
 
             body.innerHTML = lives.map(l => {
                 const cls = l.date < todayStr ? 'status-past' : (l.date === todayStr ? 'status-today' : 'status-future');
@@ -736,13 +772,28 @@
             }).join('') || '<tr><td colspan="4">登録なし</td></tr>';
         }
 
+        function renderArtistList() {
+            const sort = document.getElementById('artistSortSelect').value;
+            const hint = document.getElementById('artistFormulaHint');
+            // お気に入り順の時だけヒントを表示
+            hint.style.display = (sort === 'favorite') ? 'block' : 'none';
+
+            const sorted = [...artists];
+            if (sort === 'regNew') sorted.sort((a, b) => Number(b.id) - Number(a.id));
+            else sorted.sort((a, b) => calculateFavoriteScore(b.id) - calculateFavoriteScore(a.id));
+            document.getElementById('artistTableBody').innerHTML = sorted.map(a => {
+                const s = getArtistStats(a.id);
+                return `<tr onclick="showArtistDetail('${a.id}')"><td><strong style="color:var(--primary-color)">${a.name}</strong></td><td>${s.past}/${s.future}</td><td>${s.oneman}</td><td>${s.taiban}</td><td>${s.fes}</td></tr>`;
+            }).join('') || '<tr><td colspan="5">なし</td></tr>';
+        }
+
         function renderVenueList() {
             const sort = document.getElementById('venueSortSelect').value;
             const vMap = {};
             lives.forEach(l => {
                 const k = `${l.pref}|${l.venue}`;
                 if (!vMap[k]) vMap[k] = { name: l.venue, pref: l.pref, count: 0, last: l.date };
-                if (l.date < todayStr) vMap[k].count++; // 回数集計は過去のみ
+                if (l.date < todayStr) vMap[k].count++;
                 if (l.date > vMap[k].last) vMap[k].last = l.date;
             });
             const sorted = Object.values(vMap).sort((a, b) => sort === 'newest' ? b.last.localeCompare(a.last) : (b.count - a.count || b.last.localeCompare(a.last)));
@@ -766,17 +817,6 @@
                 showSection('venueEditFormSection');
             };
             showSection('venueDetailSection');
-        }
-
-        function renderArtistList() {
-            const sort = document.getElementById('artistSortSelect').value;
-            const sorted = [...artists];
-            if (sort === 'regNew') sorted.sort((a, b) => Number(b.id) - Number(a.id));
-            else sorted.sort((a, b) => calculateFavoriteScore(b.id) - calculateFavoriteScore(a.id));
-            document.getElementById('artistTableBody').innerHTML = sorted.map(a => {
-                const s = getArtistStats(a.id);
-                return `<tr onclick="showArtistDetail('${a.id}')"><td><strong style="color:var(--primary-color)">${a.name}</strong></td><td>${s.past}/${s.future}</td><td>${s.oneman}</td><td>${s.taiban}</td><td>${s.fes}</td></tr>`;
-            }).join('') || '<tr><td colspan="5">なし</td></tr>';
         }
 
         function showArtistDetail(id) {
@@ -821,12 +861,11 @@
                 document.getElementById('prefecture').value = l.pref; document.getElementById('venueName').value = l.venue; document.getElementById('liveType').value = l.type; sel = l.artistIds;
             } else {
                 document.getElementById('editLiveId').value = ""; const n = new Date(); document.getElementById('yearSelect').value = n.getFullYear(); document.getElementById('monthSelect').value = n.getMonth() + 1; updateDays(); document.getElementById('daySelect').value = n.getDate();
-                document.getElementById('prefecture').value = getDefaultPrefecture(); // 最多都道府県をセット
+                document.getElementById('prefecture').value = getDefaultPrefecture();
             }
             updateVenueSuggestions(); renderArtistCheckboxes(sel); showSection('liveFormSection');
         }
 
-        // --- その他補助 ---
         function initDateSelects() {
             const ys = document.getElementById('yearSelect'); const y = new Date().getFullYear();
             for (let i = y - 10; i <= y + 5; i++) { const o = document.createElement('option'); o.value = i; o.textContent = i + '年'; if (i === y) o.selected = true; ys.appendChild(o); }
