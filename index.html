@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Live Archive</title>
     <style>
         :root {
@@ -25,7 +25,7 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
-            padding: 20px;
+            padding: 15px;
         }
 
         .container {
@@ -42,19 +42,20 @@
         nav {
             display: flex;
             justify-content: center;
-            gap: 10px;
+            gap: 8px;
             margin-bottom: 20px;
             flex-wrap: wrap;
         }
 
         button {
-            padding: 10px 18px;
+            padding: 12px 18px;
             cursor: pointer;
             border: none;
             border-radius: 6px;
             background-color: var(--primary-color);
             color: white;
             font-weight: bold;
+            font-size: 14px;
         }
 
         button:hover {
@@ -86,7 +87,7 @@
         .view-section {
             display: none;
             background: var(--card-bg);
-            padding: 20px;
+            padding: 15px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
@@ -96,10 +97,18 @@
             display: block;
         }
 
+        /* モバイル対応：テーブルの横スクロール */
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
+            min-width: 500px;
         }
 
         th,
@@ -142,20 +151,21 @@
             font-weight: bold;
         }
 
+        /* スマホでのズーム防止：font-sizeを16pxに設定 */
         input,
         select,
         textarea {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             box-sizing: border-box;
             border: 1px solid #ccc;
             border-radius: 4px;
-            font-size: 1rem;
+            font-size: 16px;
         }
 
         .date-select-group {
             display: flex;
-            gap: 10px;
+            gap: 5px;
         }
 
         .date-select-group select {
@@ -188,10 +198,12 @@
             gap: 8px;
             margin-bottom: 5px;
             cursor: pointer;
+            padding: 5px 0;
         }
 
         .checkbox-item input {
-            width: auto;
+            width: 18px;
+            height: 18px;
             cursor: pointer;
         }
 
@@ -215,6 +227,7 @@
             justify-content: center;
             border-top: 1px solid #eee;
             padding-top: 20px;
+            flex-wrap: wrap;
         }
 
         .stats-container {
@@ -232,6 +245,7 @@
             border: 1px solid #ddd;
             text-align: center;
             min-width: 80px;
+            flex: 1;
         }
 
         .stat-card .num {
@@ -324,19 +338,20 @@
 
         .chart-wrapper {
             margin: 20px 0;
-            padding: 20px;
+            padding: 10px;
             background: #fafafa;
             border-radius: 8px;
+            overflow-x: auto;
         }
 
         .bar-chart {
             display: flex;
             align-items: flex-end;
-            gap: 6px;
+            gap: 4px;
             height: 150px;
             padding-bottom: 25px;
             border-bottom: 2px solid #ddd;
-            margin-top: 10px;
+            min-width: 400px;
         }
 
         .bar-column {
@@ -423,12 +438,31 @@
             margin-top: 20px;
         }
 
+        @media (max-width: 500px) {
+            .menu-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .formula-hint {
             text-align: right;
             font-size: 0.75em;
             color: #888;
             margin-top: 10px;
             display: none;
+        }
+
+        .history-item {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            text-align: left;
+        }
+
+        .history-date {
+            font-weight: bold;
+            color: var(--accent-color);
+            font-size: 0.85em;
         }
     </style>
 </head>
@@ -451,23 +485,46 @@
             <div class="menu-grid">
                 <button onclick="renderVenueList(); showSection('venueListSection')">会場一覧</button>
                 <button onclick="initStatsView(); showSection('statsSection')">統計</button>
+                <button onclick="showSection('historySection')" class="btn-dark">アップデート履歴</button>
+            </div>
+        </section>
+
+        <section id="historySection" class="view-section">
+            <h2>アップデート履歴</h2>
+            <div class="history-item">
+                <div class="history-date">2026-02-14</div>
+                <p style="margin: 5px 0; font-size: 0.9em;">
+                    ・スマホ（Android/iOS）表示の最適化<br>・ライブの日付に曜日を自動表示<br>・アップデート履歴ページの追加</p>
+            </div>
+            <div class="history-item">
+                <div class="history-date">2026-02-12</div>
+                <p style="margin: 5px 0; font-size: 0.9em;">
+                    ・統計一覧の表示項目を「アーティスト名」に変更<br>・ライブ一覧のカウントをカード形式で表示<br>・ランキングの「タイ（同順位）」判定ロジックの実装</p>
+            </div>
+            <div class="history-item">
+                <div class="history-date">2026-02-10</div>
+                <p style="margin: 5px 0; font-size: 0.9em;">・「その他」メニューの設置<br>・月別参加数グラフと都道府県別統計の追加<br>・会場一覧のソート機能追加</p>
+            </div>
+            <div class="actions"><button class="btn-secondary" onclick="showSection('otherMenuSection')">戻る</button>
             </div>
         </section>
 
         <section id="liveListSection" class="view-section active">
             <h2>参加ライブ一覧</h2>
             <div class="stats-container" id="liveListStats"></div>
-            <table id="liveTable">
-                <thead>
-                    <tr>
-                        <th>日付</th>
-                        <th>公演名</th>
-                        <th>アーティスト</th>
-                        <th>場所</th>
-                    </tr>
-                </thead>
-                <tbody id="liveTableBody"></tbody>
-            </table>
+            <div class="table-wrapper">
+                <table id="liveTable">
+                    <thead>
+                        <tr>
+                            <th>日付</th>
+                            <th>公演名</th>
+                            <th>アーティスト</th>
+                            <th>場所</th>
+                        </tr>
+                    </thead>
+                    <tbody id="liveTableBody"></tbody>
+                </table>
+            </div>
         </section>
 
         <section id="venueListSection" class="view-section">
@@ -491,7 +548,7 @@
                 <select id="statsYearSelect" onchange="updateStats()"></select>
             </div>
             <div class="chart-wrapper">
-                <h3>月別参加回数</h3>
+                <h3 style="font-size: 1.1em;">月別参加回数</h3>
                 <div id="monthlyChart" class="bar-chart"></div>
             </div>
             <div class="stats-container">
@@ -512,17 +569,18 @@
             <div id="yearlyRanking" class="ranking-list" style="max-width: 500px; margin: 0 auto;"></div>
 
             <h3>年間のライブ一覧</h3>
-            <table id="yearlyLiveTable">
-                <thead>
-                    <tr>
-                        <th>日付</th>
-                        <th>公演名</th>
-                        <th>アーティスト名</th>
-                    </tr>
-                </thead>
-                <tbody id="yearlyLiveBody"></tbody>
-            </table>
-
+            <div class="table-wrapper">
+                <table id="yearlyLiveTable">
+                    <thead>
+                        <tr>
+                            <th>日付</th>
+                            <th>公演名</th>
+                            <th>アーティスト名</th>
+                        </tr>
+                    </thead>
+                    <tbody id="yearlyLiveBody"></tbody>
+                </table>
+            </div>
             <div class="actions"><button class="btn-secondary" onclick="showSection('otherMenuSection')">戻る</button>
             </div>
         </section>
@@ -532,16 +590,18 @@
             <p id="detVenuePref" style="text-align: center; color: #666;"></p>
             <div class="stats-container" id="venueStats"></div>
             <h3>この会場での参加履歴</h3>
-            <table id="venueLiveTable">
-                <thead>
-                    <tr>
-                        <th>日付</th>
-                        <th>公演名</th>
-                        <th>アーティスト</th>
-                    </tr>
-                </thead>
-                <tbody id="venueLiveBody"></tbody>
-            </table>
+            <div class="table-wrapper">
+                <table id="venueLiveTable">
+                    <thead>
+                        <tr>
+                            <th>日付</th>
+                            <th>公演名</th>
+                            <th>アーティスト</th>
+                        </tr>
+                    </thead>
+                    <tbody id="venueLiveBody"></tbody>
+                </table>
+            </div>
             <div class="actions">
                 <button class="btn-secondary" onclick="showSection('venueListSection')">戻る</button>
                 <button class="btn-edit" id="editVenueBtn">会場情報を編集</button>
@@ -568,18 +628,20 @@
                     <option value="favorite">お気に入り順</option>
                 </select>
             </div>
-            <table id="artistTable">
-                <thead>
-                    <tr>
-                        <th>アーティスト名</th>
-                        <th>参加(済/予定)</th>
-                        <th>ワンマン</th>
-                        <th>対バン</th>
-                        <th>フェス</th>
-                    </tr>
-                </thead>
-                <tbody id="artistTableBody"></tbody>
-            </table>
+            <div class="table-wrapper">
+                <table id="artistTable">
+                    <thead>
+                        <tr>
+                            <th>アーティスト名</th>
+                            <th>参加(済/予定)</th>
+                            <th>ワンマン</th>
+                            <th>対バン</th>
+                            <th>フェス</th>
+                        </tr>
+                    </thead>
+                    <tbody id="artistTableBody"></tbody>
+                </table>
+            </div>
             <div id="artistFormulaHint" class="formula-hint">※お気に入り係数 = 5*(ワンマン) + 3*(対バン) + 2*(フェス) + 前後1年のライブ数</div>
         </section>
 
@@ -587,16 +649,18 @@
             <h2 id="detArtistName"></h2>
             <div class="stats-container" id="artistStats"></div>
             <h3>参加履歴</h3>
-            <table id="artistLiveTable">
-                <thead>
-                    <tr>
-                        <th>日付</th>
-                        <th>公演名</th>
-                        <th>会場</th>
-                    </tr>
-                </thead>
-                <tbody id="artistLiveBody"></tbody>
-            </table>
+            <div class="table-wrapper">
+                <table id="artistLiveTable">
+                    <thead>
+                        <tr>
+                            <th>日付</th>
+                            <th>公演名</th>
+                            <th>会場</th>
+                        </tr>
+                    </thead>
+                    <tbody id="artistLiveBody"></tbody>
+                </table>
+            </div>
             <div class="actions"><button class="btn-secondary"
                     onclick="showSection('artistListSection')">戻る</button><button class="btn-edit"
                     id="editArtistBtn">名前を編集</button><button class="btn-delete" id="deleteArtistBtn">アーティストを削除</button>
@@ -632,8 +696,8 @@
                 <div class="form-group">
                     <label>アーティスト選択</label>
                     <div class="quick-add-artist"><input type="text" id="quickArtistName"
-                            placeholder="新しいアーティスト名"><button type="button" class="btn-small"
-                            onclick="quickAddArtist()">追加</button></div>
+                            placeholder="新しいアーティスト名"><button type="button" onclick="quickAddArtist()"
+                            style="background:var(--success-color); padding: 5px 10px;">追加</button></div>
                     <div id="artistCheckboxes" class="checkbox-group"></div>
                 </div>
                 <div class="actions"><button type="button" class="btn-secondary"
@@ -674,6 +738,13 @@
 
         const prefectures = ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"];
 
+        // --- 曜日取得用関数 ---
+        function getDayOfWeek(dateStr) {
+            const days = ['日', '月', '火', '水', '木', '金', '土'];
+            const d = new Date(dateStr);
+            return isNaN(d.getTime()) ? "" : `(${days[d.getDay()]})`;
+        }
+
         function init() {
             const prefSelect = document.getElementById('prefecture');
             const editPrefSelect = document.getElementById('editVenuePrefSelect');
@@ -688,6 +759,7 @@
         function showSection(sectionId) {
             document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
             document.getElementById(sectionId).classList.add('active');
+            window.scrollTo(0, 0); // ページトップへ戻す（モバイル配慮）
         }
 
         function getDefaultPrefecture() {
@@ -743,11 +815,10 @@
             const favData = Object.entries(rankMap).sort((a, b) => b[1] - a[1]).slice(0, 10).map(r => [artists.find(a => String(a.id) === String(r[0]))?.name || '<削除済>', r[1]]);
             renderTieRanking('yearlyRanking', favData, " pt");
 
-            // --- 修正箇所：年間のライブ一覧の表示内容変更 ---
             document.getElementById('yearlyLiveBody').innerHTML = yearlyLives.map(l => {
                 const cls = l.date < todayStr ? 'status-past' : (l.date === todayStr ? 'status-today' : 'status-future');
                 const arts = l.artistIds.map(id => artists.find(a => String(a.id) === String(id))?.name || '<削除済>').join(', ');
-                return `<tr class="${cls}" onclick="showLiveDetail('${l.id}')"><td>${l.date}</td><td>${l.name}</td><td>${arts}</td></tr>`;
+                return `<tr class="${cls}" onclick="showLiveDetail('${l.id}')"><td>${l.date}${getDayOfWeek(l.date)}</td><td>${l.name}</td><td>${arts}</td></tr>`;
             }).join('') || '<tr><td colspan="3">なし</td></tr>';
         }
 
@@ -760,7 +831,7 @@
             body.innerHTML = lives.map(l => {
                 const cls = l.date < todayStr ? 'status-past' : (l.date === todayStr ? 'status-today' : 'status-future');
                 const arts = l.artistIds.map(id => artists.find(a => String(a.id) === String(id))?.name || '<削除済>').join(', ');
-                return `<tr class="${cls}" onclick="showLiveDetail('${l.id}')"><td>${l.date}</td><td><strong>${l.name}</strong><br><small>(${l.type})</small></td><td>${arts}</td><td>${l.pref} ${l.venue}</td></tr>`;
+                return `<tr class="${cls}" onclick="showLiveDetail('${l.id}')"><td>${l.date}<br><small>${getDayOfWeek(l.date)}</small></td><td><strong>${l.name}</strong><br><small>(${l.type})</small></td><td>${arts}</td><td>${l.pref} ${l.venue}</td></tr>`;
             }).join('') || '<tr><td colspan="4">登録なし</td></tr>';
         }
 
@@ -798,7 +869,7 @@
             document.getElementById('venueLiveBody').innerHTML = history.map(l => {
                 const cls = l.date < todayStr ? 'status-past' : (l.date === todayStr ? 'status-today' : 'status-future');
                 const arts = l.artistIds.map(id => artists.find(a => String(a.id) === String(id))?.name || '<削除済>').join(', ');
-                return `<tr class="${cls}" onclick="showLiveDetail('${l.id}')"><td>${l.date}</td><td>${l.name}</td><td>${arts}</td></tr>`;
+                return `<tr class="${cls}" onclick="showLiveDetail('${l.id}')"><td>${l.date}${getDayOfWeek(l.date)}</td><td>${l.name}</td><td>${arts}</td></tr>`;
             }).join('');
             document.getElementById('editVenueBtn').onclick = () => {
                 document.getElementById('oldVenueName').value = name; document.getElementById('oldVenuePref').value = pref;
@@ -814,7 +885,7 @@
             const s = getArtistStats(id);
             document.getElementById('artistStats').innerHTML = `<div class="stat-card"><span class="num">${s.past}</span><span class="label">Total (参加済)</span></div><div class="stat-card"><span class="num">${s.oneman}</span><span class="label">ワンマン</span></div><div class="stat-card"><span class="num">${s.taiban}</span><span class="label">対バン</span></div><div class="stat-card"><span class="num">${s.fes}</span><span class="label">フェス</span></div>`;
             const hist = lives.filter(l => l.artistIds.some(aid => String(aid) === String(id))).sort((a, b) => b.date.localeCompare(a.date));
-            document.getElementById('artistLiveBody').innerHTML = hist.map(l => `<tr class="${l.date < todayStr ? 'status-past' : (l.date === todayStr ? 'status-today' : 'status-future')}" onclick="showLiveDetail('${l.id}')"><td>${l.date}</td><td>${l.name}</td><td>${l.venue}</td></tr>`).join('');
+            document.getElementById('artistLiveBody').innerHTML = hist.map(l => `<tr class="${l.date < todayStr ? 'status-past' : (l.date === todayStr ? 'status-today' : 'status-future')}" onclick="showLiveDetail('${l.id}')"><td>${l.date}${getDayOfWeek(l.date)}</td><td>${l.name}</td><td>${l.venue}</td></tr>`).join('');
             document.getElementById('editArtistBtn').onclick = () => { document.getElementById('editArtistId').value = id; document.getElementById('editArtistName').value = a.name; showSection('artistEditFormSection'); };
             document.getElementById('deleteArtistBtn').onclick = () => { if (confirm('削除しますか？')) { artists = artists.filter(x => String(x.id) !== String(id)); lives.forEach(l => l.artistIds = l.artistIds.filter(aid => String(aid) !== String(id))); saveData(); renderArtistList(); showSection('artistListSection'); } };
             showSection('artistDetailSection');
@@ -822,13 +893,7 @@
 
         function getArtistStats(artistId) {
             const hist = lives.filter(l => l.artistIds.some(id => String(id) === String(artistId)));
-            return {
-                past: hist.filter(l => l.date < todayStr).length,
-                future: hist.filter(l => l.date >= todayStr).length,
-                oneman: hist.filter(l => l.date < todayStr && l.type === 'ワンマン').length,
-                taiban: hist.filter(l => l.date < todayStr && l.type === '対バン').length,
-                fes: hist.filter(l => l.date < todayStr && l.type === 'フェス').length
-            };
+            return { past: hist.filter(l => l.date < todayStr).length, future: hist.filter(l => l.date >= todayStr).length, oneman: hist.filter(l => l.date < todayStr && l.type === 'ワンマン').length, taiban: hist.filter(l => l.date < todayStr && l.type === '対バン').length, fes: hist.filter(l => l.date < todayStr && l.type === 'フェス').length };
         }
 
         function calculateFavoriteScore(artistId) {
@@ -895,7 +960,7 @@
             const l = lives.find(x => x.id === id); if (!l) return;
             const arts = l.artistIds.map(aid => { const a = artists.find(x => String(x.id) === String(aid)); return a ? `<span class="artist-tag" onclick="event.stopPropagation(); showArtistDetail('${aid}')">${a.name}</span>` : `(削除済)`; }).join('');
             document.getElementById('detLiveName').textContent = l.name;
-            document.getElementById('liveDetailContent').innerHTML = `<p>日付: ${l.date}</p><p>会場: <span style="color:var(--primary-color); cursor:pointer; text-decoration:underline;" onclick="showVenueDetail('${l.pref}','${l.venue}')">${l.pref} ${l.venue}</span></p><p>形式: ${l.type}</p><div style="margin-top:15px;">アーティスト:<br>${arts}</div>`;
+            document.getElementById('liveDetailContent').innerHTML = `<p>日付: ${l.date}${getDayOfWeek(l.date)}</p><p>会場: <span style="color:var(--primary-color); cursor:pointer; text-decoration:underline;" onclick="showVenueDetail('${l.pref}','${l.venue}')">${l.pref} ${l.venue}</span></p><p>形式: ${l.type}</p><div style="margin-top:15px;">アーティスト:<br>${arts}</div>`;
             document.getElementById('editLiveBtn').onclick = () => openLiveForm(id);
             document.getElementById('deleteLiveBtn').onclick = () => { if (confirm('削除しますか？')) { lives = lives.filter(x => x.id !== id); saveData(); renderLiveList(); showSection('liveListSection'); } };
             showSection('liveDetailSection');
